@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  reth:
+    image: ghcr.io/paradigmxyz/reth
+    container_name: reth
+    restart: always
+    networks:
+      - eth-network
+    command: >
+      node --chain ${CHAIN:-sepolia} $( [ \"$FULL_MODE\" = \"true\" ] && echo '--full' ) --datadir /data --http --http.api admin,debug,eth,net,trace,txpool,web3,rpc,reth,ots --http.addr 0.0.0.0 --http.corsdomain "*" --authrpc.jwtsecret /secret/jwtsecret --authrpc.addr=0.0.0.0 --nat extip:185.162.251.239 --rpc.eth-proof-window 302400 -vvv
+    environment:
+      - FULL_MODE=${FULL_MODE} 
+    volumes:
+      - ./geth-data:/data
+      - ./secret:/secret
+    ports:
+      - "8545:8545"
+      - "8551:8551"
+      - "30303:30303/tcp"
+      - "30303:30303/udp"
+
+  lodestar:
+    image: chainsafe/lodestar
+    container_name: lodestar
+    restart: always
+    networks:
+      - eth-network
+    volumes:
+      - ./lodestar-data:/data
+      - ./secret:/secret
+    ports:
+      - "9000:9000"
+      - "5052:5052"
+    command: >
+       beacon --network=${CHAIN:-sepolia} --dataDir=/data --eth1 true --eth1.providerUrls "http://reth:8545" --execution.urls http://reth:8551 --rest.address 0.0.0.0 --rest.port 5052 --jwtSecret /secret/jwtsecret --checkpointSyncUrl https://checkpoint-sync.sepolia.ethpandaops.io 
+
+
+networks:
+  eth-network:
